@@ -10,7 +10,7 @@ require 'nokogiri-styles'
 class Scraper 
 	attr_reader :rows, :rsvps_page
 	def initialize
-		@rows = []
+		
 		@budget_array_for_calculating_average = []
 	end
 
@@ -31,14 +31,23 @@ class Scraper
 		noko = Nokogiri::HTML(page)
 		name= noko.search('.summary')[0].text.gsub("\n","")
 		year = noko.search('.bday.dtstart.published.updated')[0].text[0..3]
-		original_budget = noko.search('.infobox').text[/Budget\n(.+)\n/,1] 
-		if original_budget 
+		original_budget = noko.search('.infobox').text[/Budget\n(.+)\n/,1]
+		if original_budget
 			original_budget = original_budget.gsub(/\[.*/,"").gsub(" (est.)","")
-			standardized_budget = clean_currency(original_budget, year)
-			standardized_budget = clean_denomination(standardized_budget)
-			add_budget_to_array(standardized_budget)
+			standardized_budget = standardize(original_budget, year)
 		end
-		@rows << [year, name, original_budget || "No budget listed"]
+		write_into_CSV_file([year, name, original_budget || "Budget not listed", standardized_budget])
+	end
+
+	def standardize(original_budget, year)
+		standardized_budget = clean_currency(original_budget, year)
+		standardized_budget = clean_denomination(standardized_budget)
+		if standardized_budget != "" && standardized_budget != 0 && standardized_budget != "0"
+			add_budget_to_array(standardized_budget)
+			standardized_budget
+		else
+			standardized_budget = "Budget not included in average"
+		end
 	end
 
 	def clean_currency(budget, year)
@@ -58,23 +67,18 @@ class Scraper
 	end
 
 	def add_budget_to_array(budget)
-		if budget != "" && budget != 0 && budget != "0"
-			@budget_array_for_calculating_average.push(budget.to_i)
-		end
+		@budget_array_for_calculating_average.push(budget.to_i)
 	end
 
 	def get_average
-		print @budget_array_for_calculating_average
 		sum = @budget_array_for_calculating_average.inject(:+)
 		average = sum/@budget_array_for_calculating_average.count
-		@rows.push(["Average budget out of #{@budget_array_for_calculating_average.count} winners: $#{average}"])
+		write_into_CSV_file(["Average budget out of #{@budget_array_for_calculating_average.count} winners: $#{average}"])
 	end
 
-	def write_into_CSV_file
-		CSV.open("spreadsheet.csv", "wb") do |csv|
-			@rows.map do |line|
-				csv << line
-			end
+	def write_into_CSV_file(row)
+		CSV.open("spreadsheet.csv", "a+") do |csv|
+			csv << row
 		end
 	end
 
@@ -84,4 +88,4 @@ a = Scraper.new
 a.fetch_page
 a.iterate_through_years
 a.get_average
-a.write_into_CSV_file
+#a.write_into_CSV_file
