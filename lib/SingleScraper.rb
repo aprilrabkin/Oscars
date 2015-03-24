@@ -1,6 +1,6 @@
 class SingleScraper < MainScraper
 
-	attr_reader :budget
+	attr_reader :budget, :standardized_budget
 
 	def initialize(url)
 		@url = url

@@ -1,4 +1,5 @@
 class MainScraper
+	attr_reader :array_of_budgets
 
 	def initialize(url)
 		@url = url
@@ -15,8 +16,15 @@ class MainScraper
 			link_to_winner = "http://en.wikipedia.org" + year_table.css('td')[0].children[0].children[0].attributes['href'].value
 			winner = SingleScraper.new(link_to_winner) 
 			winner.scrape_and_print
-			if winner.budget != "" && winner.budget != 0 && winner.budget != "0"
-				@array_of_budgets.push(winner.budget)
+			add_to_array_for_average(winner.budget)
+		end
+	end
+
+	def add_to_array_for_average(budget)
+		if budget != "" && budget != 0 && budget != "0" && budget != "unknown"
+			@array_of_budgets.push(budget)
+			CSV.open("array_of_budgets.csv", "a+") do |csv|
+				csv << [budget]
 			end
 		end
 	end
